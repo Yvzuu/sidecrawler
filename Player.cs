@@ -11,6 +11,7 @@ public partial class Player : CharacterBody2D
 	[Export] public float WallJumpPushback = 100.0f;
 	[Export] public float MaxHealth = 100f;
 	[Export] public float MaxMana = 100f;
+	[Export] public int AttackDamage = 20;
 
 	private AnimatedSprite2D _anim;
 	private AnimatedSprite2D _bladeEffect;
@@ -22,21 +23,22 @@ public partial class Player : CharacterBody2D
 	private bool _isDashing = false;
 	private bool _isParry = false;
 	private bool _isAttacking = false;
+	public bool IsDashing => _isDashing;
 	private int _jumpCount = 0;
 	private float _dashCooldownTimer = 0f;
 	private float _attackCooldownTimer = 0f;
 
-	public float Health = 100;
+	public int Health = 50;
 
-	public float Mana = 100;
+	public int Mana = 100;
 
 	public override void _Ready()
 	{
 		_anim = GetNode<AnimatedSprite2D>("Main");
 		_bladeEffect = GetNode<AnimatedSprite2D>("BladeEffect");
 		_runEffect = GetNode<AnimatedSprite2D>("MovementEffect");
-		_HealthBar = GetNode<ProgressBar>("../scenes/HealthBar");
-		_ManaBar = GetNode<ProgressBar>("../scenes/ManaBar");
+		_HealthBar = GetNode<ProgressBar>("/root/World/HUD/Control/HealthBar");
+		_ManaBar = GetNode<ProgressBar>("/root/World/HUD/Control/ManaBar");
 
 		_bladeEffect.Visible = false;
 		_runEffect.Visible = false;
@@ -183,6 +185,15 @@ public partial class Player : CharacterBody2D
 		_bladeEffect.FlipH = _anim.FlipH;
 		_bladeEffect.Position = new Vector2(_anim.FlipH ? -120 : 120, 0);
 		_bladeEffect.Play("attack_effect");
+		// Inflige des dégâts à tous les ennemis proches
+		foreach (var enemy in GetTree().GetNodesInGroup("enemies"))
+		{
+			Enemy e = enemy as Enemy;
+			if (e != null && e.GlobalPosition.DistanceTo(GlobalPosition) < 1000) // 50 = portée de l'attaque
+			{
+				e.TakeDamage(AttackDamage);
+			}
+		}
 	}
 
 	private void StartAttackUp()
@@ -201,6 +212,13 @@ public partial class Player : CharacterBody2D
 		_bladeEffect.Visible = true;
 		_bladeEffect.Position = new Vector2(0, 120);
 		_bladeEffect.Play("attack_effect_down");
+	}
+		public void TakeDamage(int amount)
+	{
+		Health -= amount;
+		if (Health < 0) Health = 0;
+		UpdateBars();
+		// Ajoute ici un effet visuel ou sonore si tu veux
 	}
 
 	private void UpdateBars()

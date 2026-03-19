@@ -19,6 +19,11 @@ config/icon="res://icon.svg"
 
 project/assembly_name="SideCrawler"
 
+[global_group]
+
+enemies=""
+player=""
+
 [input]
 
 move_up={
