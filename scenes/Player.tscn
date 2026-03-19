@@ -447,7 +447,8 @@ texture_filter = 1
 position = Vector2(-6.0000014, -33)
 scale = Vector2(7.5625, 7.6875)
 sprite_frames = SubResource("SpriteFrames_fjrip")
-animation = &"wall_climb"
+animation = &"idle"
+frame_progress = 0.33310452
 
 [node name="BladeEffect" type="AnimatedSprite2D" parent="." unique_id=743740054]
 position = Vector2(-4, 20)
