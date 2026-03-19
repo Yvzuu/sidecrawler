@@ -32,6 +32,7 @@ public partial class Player : CharacterBody2D
 
 	public int Mana = 100;
 
+ 
 	public override void _Ready()
 	{
 		_anim = GetNode<AnimatedSprite2D>("Main");
