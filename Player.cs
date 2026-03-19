@@ -9,48 +9,57 @@ public partial class Player : CharacterBody2D
 	[Export] public float DashCooldown = 1.0f;
 	[Export] public int MaxJumps = 2;
 	[Export] public float WallJumpPushback = 100.0f;
+	[Export] public float MaxHealth = 100f;
+	[Export] public float MaxMana = 100f;
 
 	private AnimatedSprite2D _anim;
 	private AnimatedSprite2D _bladeEffect;
 	private AnimatedSprite2D _runEffect;
+	private ProgressBar _HealthBar;
+	private ProgressBar _ManaBar;
 	public float gravity = ProjectSettings.GetSetting("physics/2d/default_gravity").AsSingle();
 
 	private bool _isDashing = false;
+	private bool _isParry = false;
 	private bool _isAttacking = false;
 	private int _jumpCount = 0;
 	private float _dashCooldownTimer = 0f;
 	private float _attackCooldownTimer = 0f;
+
+	public float Health = 100;
+
+	public float Mana = 100;
 
 	public override void _Ready()
 	{
 		_anim = GetNode<AnimatedSprite2D>("Main");
 		_bladeEffect = GetNode<AnimatedSprite2D>("BladeEffect");
 		_runEffect = GetNode<AnimatedSprite2D>("MovementEffect");
-		
+		_HealthBar = GetNode<ProgressBar>("../scenes/HealthBar");
+		_ManaBar = GetNode<ProgressBar>("../scenes/ManaBar");
+
 		_bladeEffect.Visible = false;
 		_runEffect.Visible = false;
 		
 		_anim.AnimationFinished += OnAnimationFinished;
+		UpdateBars();
+		
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
 		Vector2 velocity = Velocity;
 
-		// 1. Gestion des Timers
 		if (_dashCooldownTimer > 0) _dashCooldownTimer -= (float)delta;
 		if (_attackCooldownTimer > 0) _attackCooldownTimer -= (float)delta;
 
-		// 2. Récupération de la direction (Important pour l'anim Idle/Run)
 		float direction = Input.GetAxis("move_left", "move_right");
 
-		// 3. Gestion des Inputs (Dash & Attaque)
-		if (!_isDashing && !_isAttacking)
+		// Inputs
+		if (!_isDashing && !_isAttacking && !_isParry)
 		{
-			if (Input.IsActionJustPressed("dash") && _dashCooldownTimer <= 0) 
-			{
-				StartDash();
-			}
+			if (Input.IsActionJustPressed("dash") && _dashCooldownTimer <= 0) StartDash();
+			// else if (Input.IsActionJustPressed("parry")) StartParry();
 			else if (Input.IsActionJustPressed("attack") && _attackCooldownTimer <= 0)
 			{
 				if (Input.IsActionPressed("move_up")) StartAttackUp();
@@ -60,46 +69,42 @@ public partial class Player : CharacterBody2D
 			}
 		}
 
-		// 4. Physique : Dash vs Mouvement Normal (Gravité)
+		// Physique
 		if (_isDashing)
 		{
-			// On utilise la direction du regard (FlipH) pour le dash
 			velocity.X = (_anim.FlipH ? -1 : 1) * DashSpeed;
-			velocity.Y = 0; // Pas de gravité pendant le dash
+			velocity.Y = 0;
+		}
+		else if (_isParry)
+		{
+			velocity.X = 0; // On fige le perso pendant le parry
+			velocity.Y = 0;
 		}
 		else
 		{
-			// Appelle la gravité, le saut et le déplacement
 			HandleNormalMovement(delta, ref velocity);
 		}
 
-		// 5. Mise à jour des Animations (Priorité au Dash)
-		if (!_isAttacking)
+		// Animations (On ne met pas à jour si on attaque ou parry, car ils gèrent leurs propres anims)
+		if (!_isAttacking && !_isParry)
 		{
 			UpdateAnimations(direction);
 		}
 
-		// 6. Application du mouvement final
 		Velocity = velocity;
 		MoveAndSlide();
 	}
 
 	private void HandleNormalMovement(double delta, ref Vector2 velocity)
 	{
-		// Gravité & Wall Slide
 		if (!IsOnFloor())
 		{
 			float currentGravity = gravity;
-			// Si on glisse contre un mur en tombant
 			if (IsOnWallOnly() && velocity.Y > 0) currentGravity *= 0.3f; 
 			velocity.Y += currentGravity * (float)delta;
 		}
-		else
-		{
-			_jumpCount = 0; // Reset des sauts au sol
-		}
+		else _jumpCount = 0;
 
-		// Saut & Double Saut
 		if (Input.IsActionJustPressed("jump"))
 		{
 			if (IsOnFloor() || _jumpCount < MaxJumps)
@@ -115,22 +120,17 @@ public partial class Player : CharacterBody2D
 			}
 		}
 
-		// Déplacement latéral
 		float direction = Input.GetAxis("move_left", "move_right");
 		if (direction != 0)
 		{
 			velocity.X = direction * Speed;
-			if (!_isAttacking) _anim.FlipH = direction < 0;
+			_anim.FlipH = direction < 0;
 		}
-		else 
-		{
-			velocity.X = Mathf.MoveToward(velocity.X, 0, Speed);
-		}
+		else velocity.X = Mathf.MoveToward(velocity.X, 0, Speed);
 	}
 
 	private void UpdateAnimations(float direction)
 	{
-		// PRIORITÉ 1 : DASH
 		if (_isDashing)
 		{
 			if (_anim.Animation != "dash") _anim.Play("dash");
@@ -141,33 +141,20 @@ public partial class Player : CharacterBody2D
 			return;
 		}
 
-		// PRIORITÉ 2 : MUR
-		if (IsOnWallOnly() && !IsOnFloor())
+		// if (IsOnWallOnly() && !IsOnFloor()) _anim.Play("wall_climb");
+		else if (!IsOnFloor()) _anim.Play("jump");
+		else if (Mathf.Abs(direction) > 0.1f) // Deadzone pour Linux/Manette
 		{
-			if (_anim.Animation != "wall_climb") _anim.Play("wall_climb");
-			_runEffect.Visible = false;
-		}
-		// PRIORITÉ 3 : AIR (Saut/Chute)
-		else if (!IsOnFloor())
-		{
-			if (_anim.Animation != "jump") _anim.Play("jump");
-			_runEffect.Visible = false;
-		}
-		// PRIORITÉ 4 : COURSE
-		else if (Mathf.Abs(direction) > 0.1f)
-		{
-			if (_anim.Animation != "run") _anim.Play("run");
+			_anim.Play("run");
 			_runEffect.Visible = true;
-			if (_runEffect.Animation != "RunAnimation") _runEffect.Play("RunAnimation");
+			_runEffect.Play("RunAnimation");
 			_runEffect.FlipH = _anim.FlipH;
 			_runEffect.Position = new Vector2(_anim.FlipH ? 70 : -70, 50);
 		}
-		// PRIORITÉ 5 : IDLE
 		else
 		{
-			if (_anim.Animation != "idle") _anim.Play("idle");
+			_anim.Play("idle");
 			_runEffect.Visible = false;
-			_runEffect.Stop();
 		}
 	}
 
@@ -175,11 +162,19 @@ public partial class Player : CharacterBody2D
 	{
 		_isDashing = true;
 		_dashCooldownTimer = DashCooldown;
-		// Le dash dure 0.2 secondes
 		GetTree().CreateTimer(0.2f).Timeout += () => _isDashing = false;
 	}
 
-	// --- SYSTÈME D'ATTAQUE ---
+	// private void StartParry()
+	// {
+	// 	_isParry = true;
+	// 	_anim.Play("parry");
+	// 	_runEffect.Visible = true;
+	// 	_runEffect.FlipH = _anim.FlipH;
+	// 	_runEffect.Play("ParryAnimation");
+	// 	_runEffect.Position = new Vector2(_anim.FlipH ? -80 : 80, 0);
+	// }
+
 	private void StartAttack()
 	{
 		_isAttacking = true;
@@ -208,12 +203,21 @@ public partial class Player : CharacterBody2D
 		_bladeEffect.Play("attack_effect_down");
 	}
 
+	private void UpdateBars()
+	{
+		_HealthBar.MaxValue = MaxHealth;
+		_HealthBar.Value = Health;
+		_ManaBar.MaxValue = MaxMana;
+		_ManaBar.Value = Mana;
+	}
+
 	private void OnAnimationFinished()
 	{
 		string currentAnim = _anim.Animation;
-		if (currentAnim == "attack" || currentAnim == "attack_effect_up" || currentAnim == "attack_effect_down")
+		if (currentAnim == "attack" || currentAnim == "attack_effect_up" || currentAnim == "attack_effect_down" || currentAnim == "parry")
 		{
 			_isAttacking = false;
+			_isParry = false; // LIBÈRE LE PERSONNAGE
 			_bladeEffect.Visible = false;
 		}
 	}

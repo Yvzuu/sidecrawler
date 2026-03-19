@@ -160,3 +160,22 @@ offset_bottom = 697.0
 color = Color(0, 1, 0, 1)
 
 [node name="Node2D" type="Node2D" parent="wall2" unique_id=1693294284]
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1310008963]
+
+[node name="Control" type="Control" parent="HUD" unique_id=1464191490]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+grow_horizontal = 2
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/Control" unique_id=968813404]
+layout_mode = 0
+offset_right = 4.0
+offset_bottom = 27.0
+
+[node name="ManaBar" type="ProgressBar" parent="HUD/Control" unique_id=1325338477]
+layout_mode = 0
+offset_right = 4.0
+offset_bottom = 27.0
