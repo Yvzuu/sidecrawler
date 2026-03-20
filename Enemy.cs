@@ -1,12 +1,12 @@
 using Godot;
+using System;
 
 public partial class Enemy : CharacterBody2D
 {
 	[Export] public int MaxHealth = 50;
 	public int Health = 50;
 	[Export] public int Damage = 10;
-	[Export] public float Speed = 100f;
-	
+	[Export] public float Speed = 200f;
 
 	private AnimatedSprite2D _anim;
 
@@ -15,105 +15,130 @@ public partial class Enemy : CharacterBody2D
 	private float _AttackCooldown = 1.0f;
 	private float _AttackTimer = 0f;
 	public float gravity = ProjectSettings.GetSetting("physics/2d/default_gravity").AsSingle();
+	
+	private float _hitCooldown = 0.5f;
+	private float _hitTimer = 0f;
+	private bool _isStunned = false; // Pour bloquer l'IA pendant le hit
 
 	public override void _Ready()
 	{
 		_IsDead = false;
 		Health = MaxHealth;
 		_anim = GetNode<AnimatedSprite2D>("Zombie");
+		
+		// S'assurer que l'animation ne tourne pas en boucle pour le Hit et l'Attack
+		// Connecter le signal de fin d'animation
+		_anim.AnimationFinished += OnAnimationFinished;
+		
+		// Animation de départ
+		_anim.Play("Walk"); 
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
-		if (_IsDead) return;
+		if (_IsDead || _isStunned) return; // Si étourdi ou mort, on ne fait rien
+
+		// Gestion du cooldown d'attaque
 		if (!_CanAttack)
 		{
 			_AttackTimer -= (float)delta;
-			if (_AttackTimer <= 0f)
-			{
-				_CanAttack = true;
-			}
+			if (_AttackTimer <= 0f) _CanAttack = true;
 		}
+
+		// Gestion du timer d'invincibilité
+		if (_hitTimer > 0f) _hitTimer -= (float)delta;
+
 		Vector2 velocity = Velocity;
-		var player = GetTree().GetNodesInGroup("player");
-		if (player.Count > 0)
+		var players = GetTree().GetNodesInGroup("player");
+		
+		if (players.Count > 0)
 		{
-			var p = player[0] as Player;
-			if (p == null)
+			var p = players[0] as Player;
+			if (p != null)
 			{
-				GD.Print("[Enemy] Le cast vers Player a échoué !");
-			}
-			else
-			{
-				GD.Print($"[Enemy] Cast Player OK. IsDashing={p.IsDashing}, Distance={GlobalPosition.DistanceTo(p.GlobalPosition)}");
-				// Appliquer la gravité comme pour le joueur
+				// Gravité
 				if (!IsOnFloor())
 				{
-					float currentGravity = gravity;
-					if (IsOnWallOnly() && velocity.Y > 0) currentGravity *= 0.3f;
-					velocity.Y += currentGravity * (float)delta;
+					velocity.Y += gravity * (float)delta;
 				}
 				else
 				{
 					velocity.Y = 0;
 				}
-				Vector2 direction = (p.GlobalPosition - GlobalPosition).Normalized();
-				// Flip l'ennemi selon la direction X
-				if (direction.X != 0)
-				{
-					_anim.FlipH = direction.X > 0;
-				}
-				velocity.X = direction.X * Speed;
-				Velocity = velocity;
-				MoveAndSlide();
-				// Attaque si la distance 2D est < 50 (peu importe Y)
+
 				float dist = GlobalPosition.DistanceTo(p.GlobalPosition);
-				if (!p.IsDashing && dist < 50 && _CanAttack)
+				Vector2 direction = (p.GlobalPosition - GlobalPosition).Normalized();
+
+				// Flip visuel
+				if (direction.X != 0) _anim.FlipH = direction.X > 0;
+
+				// LOGIQUE D'ATTAQUE
+				if (!p.IsDashing && dist < 95 && _CanAttack)
 				{
-					GD.Print("[Enemy] Condition d'attaque remplie, attaque !");
+					velocity.X = 0; // S'arrête pour attaquer
 					_anim.Play("Attack");
 					Attack(p);
 					_CanAttack = false;
 					_AttackTimer = _AttackCooldown;
 				}
-				else if (direction != Vector2.Zero && _CanAttack)
+				// LOGIQUE DE MOUVEMENT (Seulement si on n'est pas en train d'attaquer)
+				else if (_anim.Animation != "Attack")
 				{
+					velocity.X = direction.X * Speed;
 					_anim.Play("Walk");
 				}
+
+				Velocity = velocity;
+				MoveAndSlide();
 			}
 		}
 	}
 
-	public async void TakeDamage(int amount)
+	private void OnAnimationFinished()
 	{
-		if (_IsDead) return;
-		Health -= amount;
-		// Effet de hit : joue l'animation "Hit"
-		if (_anim != null)
+		// Quand "Hit" ou "Attack" se termine, on libère l'ennemi
+		if (_anim.Animation == "Hit")
 		{
-			_anim.Play("Hit");
+			_isStunned = false;
+			_anim.Play("Walk");
 		}
+		
+		if (_anim.Animation == "Attack")
+		{
+			_anim.Play("Walk");
+		}
+	}
+
+	public void TakeDamage(int amount)
+	{
+		if (_IsDead || _hitTimer > 0f) return;
+
+		Health -= amount;
+		_hitTimer = _hitCooldown;
+		_isStunned = true; // L'ennemi s'arrête car il prend un coup
+
 		if (Health <= 0)
 		{
 			Die();
+		}
+		else
+		{
+			_anim.Play("Hit");
+			GD.Print("[Enemy] Prend des dégâts");
 		}
 	}
 
 	private async void Die()
 	{
 		_IsDead = true;
-		if (_anim != null)
-		{
-			_anim.Play("Dead");
-			GD.Print("Enemy is dead");
-			await ToSignal(_anim, "animation_finished");
-		}
+		_anim.Play("Dead");
+		// On attend la fin de l'anim de mort avant de supprimer
+		await ToSignal(_anim, "animation_finished");
 		QueueFree();
 	}
 
 	public void Attack(Player player)
 	{
-		GD.Print($"Enemy attaque le joueur ! (dégâts: {Damage})");
 		player.TakeDamage(Damage);
 	}
 }
