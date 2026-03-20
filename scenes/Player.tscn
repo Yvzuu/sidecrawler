@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://bpn3q6wx5c7om" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/9 - idle-up-attack.png" id="3_0rnld"]
 [ext_resource type="Texture2D" uid="uid://6m788ssrjb3u" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/6 - dash.png" id="4_srp4u"]
 [ext_resource type="Texture2D" uid="uid://cjsxgqem77akk" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/1 - Idle.png" id="5_0rnld"]
+[ext_resource type="Texture2D" uid="uid://b7t3o4w757tnm" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/14 - hit.png" id="5_p7iby"]
 [ext_resource type="Texture2D" uid="uid://df8l4bxksuln2" path="res://assets/sprite/Weapon/AttackRight.png" id="6_70d11"]
 [ext_resource type="Texture2D" uid="uid://cp8e7kw16a8dy" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/3 - jump.png" id="6_jfpux"]
 [ext_resource type="Texture2D" uid="uid://c8hay0xy42h1x" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/2 - Run.png" id="7_61ith"]
@@ -76,6 +77,10 @@ region = Rect2(480, 0, 240, 128)
 [sub_resource type="AtlasTexture" id="AtlasTexture_kumhx"]
 atlas = ExtResource("4_srp4u")
 region = Rect2(720, 0, 240, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0rnld"]
+atlas = ExtResource("5_p7iby")
+region = Rect2(0, 0, 240, 128)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_7b437"]
 atlas = ExtResource("5_0rnld")
@@ -239,6 +244,14 @@ animations = [{
 "loop": true,
 "name": &"dash",
 "speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0rnld")
+}],
+"loop": false,
+"name": &"hit",
+"speed": 5.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -506,7 +519,7 @@ texture_filter = 1
 position = Vector2(-6.0000014, -33)
 scale = Vector2(7.5625, 7.6875)
 sprite_frames = SubResource("SpriteFrames_fjrip")
-animation = &"attack_effect_down"
+animation = &"hit"
 
 [node name="BladeEffect" type="AnimatedSprite2D" parent="." unique_id=743740054]
 position = Vector2(-4, 20)
