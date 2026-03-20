@@ -196,7 +196,7 @@ animations = [{
 }],
 "loop": false,
 "name": &"Hit",
-"speed": 5.0
+"speed": 10.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -249,14 +249,27 @@ animations = [{
 a = Vector2(-19.999998, 0)
 b = Vector2(29.999996, 0)
 
+[sub_resource type="Animation" id="Animation_1vja8"]
+resource_name = "Attack"
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_iwav8"]
+_data = {
+&"Attack": SubResource("Animation_1vja8")
+}
+
 [node name="Enemy" type="CharacterBody2D" unique_id=631724128 groups=["enemies"]]
 script = ExtResource("2_mpr68")
 
 [node name="Zombie" type="AnimatedSprite2D" parent="." unique_id=485746211]
 sprite_frames = SubResource("SpriteFrames_wujgv")
 animation = &"Hit"
+frame = 5
+frame_progress = 1.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=65401483]
 position = Vector2(1, 16)
 scale = Vector2(0.1, 0.1)
 shape = SubResource("SegmentShape2D_1vja8")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1198000762]
+libraries/ = SubResource("AnimationLibrary_iwav8")
