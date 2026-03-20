@@ -11,7 +11,7 @@ public partial class Player : CharacterBody2D
 	[Export] public float WallJumpPushback = 100.0f;
 	[Export] public float MaxHealth = 100f;
 	[Export] public float MaxMana = 100f;
-	[Export] public int AttackDamage = 20;
+	[Export] public int AttackDamage = 20;
 
 	private AnimatedSprite2D _anim;
 	private AnimatedSprite2D _bladeEffect;
@@ -23,6 +23,8 @@ public partial class Player : CharacterBody2D
 	private bool _isDashing = false;
 	private bool _isParry = false;
 	private bool _isAttacking = false;
+
+	public bool _isHit = false;
 	public bool IsDashing => _isDashing;
 	private int _jumpCount = 0;
 	private float _dashCooldownTimer = 0f;
@@ -32,7 +34,7 @@ public partial class Player : CharacterBody2D
 
 	public int Mana = 100;
 
- 
+
 	public override void _Ready()
 	{
 		_anim = GetNode<AnimatedSprite2D>("Main");
@@ -43,10 +45,10 @@ public partial class Player : CharacterBody2D
 
 		_bladeEffect.Visible = false;
 		_runEffect.Visible = false;
-		
+
 		_anim.AnimationFinished += OnAnimationFinished;
 		UpdateBars();
-		
+
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -59,7 +61,7 @@ public partial class Player : CharacterBody2D
 		float direction = Input.GetAxis("move_left", "move_right");
 
 		// Inputs
-		if (!_isDashing && !_isAttacking && !_isParry)
+		if (!_isDashing && !_isAttacking && !_isParry && !_isHit)
 		{
 			if (Input.IsActionJustPressed("dash") && _dashCooldownTimer <= 0) StartDash();
 			// else if (Input.IsActionJustPressed("parry")) StartParry();
@@ -89,7 +91,7 @@ public partial class Player : CharacterBody2D
 		}
 
 		// Animations (On ne met pas à jour si on attaque ou parry, car ils gèrent leurs propres anims)
-		if (!_isAttacking && !_isParry)
+		if (!_isAttacking && !_isParry && !_isHit)
 		{
 			UpdateAnimations(direction);
 		}
@@ -103,7 +105,7 @@ public partial class Player : CharacterBody2D
 		if (!IsOnFloor())
 		{
 			float currentGravity = gravity;
-			if (IsOnWallOnly() && velocity.Y > 0) currentGravity *= 0.3f; 
+			if (IsOnWallOnly() && velocity.Y > 0) currentGravity *= 0.3f;
 			velocity.Y += currentGravity * (float)delta;
 		}
 		else _jumpCount = 0;
@@ -153,6 +155,11 @@ public partial class Player : CharacterBody2D
 			_runEffect.Play("RunAnimation");
 			_runEffect.FlipH = _anim.FlipH;
 			_runEffect.Position = new Vector2(_anim.FlipH ? 70 : -70, 50);
+		}
+		else if (_isHit)
+		{
+			_anim.Play("hit");
+			_runEffect.Visible = false;
 		}
 		else
 		{
@@ -214,12 +221,30 @@ public partial class Player : CharacterBody2D
 		_bladeEffect.Position = new Vector2(0, 120);
 		_bladeEffect.Play("attack_effect_down");
 	}
-		public void TakeDamage(int amount)
+
+	public void TakeDamage(int amount)
 	{
 		Health -= amount;
-		if (Health < 0) Health = 0;
-		UpdateBars();
-		// Ajoute ici un effet visuel ou sonore si tu veux
+		if (Health <= 0)
+		{
+			Die();
+		}
+		else
+		{
+			_anim.Play("hit");
+			_isHit = true;
+			GD.Print($"[TakeDamage] je joue HIT -> anim courante={_anim.Animation}");
+			GD.Print("[Main] Prend des dégâts");
+			UpdateBars();
+
+
+		}
+	}
+
+	private async void Die()
+	{
+		//ajouter reset du jeu ou écran ou je sais pas gros mais un truc la 
+
 	}
 
 	private void UpdateBars()
@@ -233,11 +258,12 @@ public partial class Player : CharacterBody2D
 	private void OnAnimationFinished()
 	{
 		string currentAnim = _anim.Animation;
-		if (currentAnim == "attack" || currentAnim == "attack_effect_up" || currentAnim == "attack_effect_down" || currentAnim == "parry")
+		if (currentAnim == "attack" || currentAnim == "attack_effect_up" || currentAnim == "attack_effect_down" || currentAnim == "parry" || currentAnim == "hit")
 		{
 			_isAttacking = false;
 			_isParry = false; // LIBÈRE LE PERSONNAGE
 			_bladeEffect.Visible = false;
+			_isHit = false;
 		}
 	}
 }
