@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cqrn66tf1qijb"]
 
 [ext_resource type="Texture2D" uid="uid://dqh3lom868y18" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/10 - attack 1.png" id="1_lkdrv"]
+[ext_resource type="Texture2D" uid="uid://b7t3o4w757tnm" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/14 - hit.png" id="1_p7iby"]
 [ext_resource type="Texture2D" uid="uid://677r3tucq4kt" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/8 - jump-down-attack.png" id="2_p7iby"]
 [ext_resource type="Texture2D" uid="uid://bpn3q6wx5c7om" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/9 - idle-up-attack.png" id="3_0rnld"]
 [ext_resource type="Texture2D" uid="uid://6m788ssrjb3u" path="res://assets/SHADOW Series - The Blind Huntress/Sprite Sheet/6 - dash.png" id="4_srp4u"]
@@ -15,7 +16,11 @@
 [ext_resource type="Texture2D" uid="uid://bp3xsj31ijcit" path="res://assets/sprite/Weapon/Parry.png" id="13_p7iby"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_g2els"]
-size = Vector2(120, 172)
+size = Vector2(94, 160)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0rnld"]
+atlas = ExtResource("1_p7iby")
+region = Rect2(0, 0, 240, 128)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ebwui"]
 atlas = ExtResource("1_lkdrv")
@@ -175,6 +180,14 @@ region = Rect2(1680, 0, 240, 128)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_fjrip"]
 animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0rnld")
+}],
+"loop": true,
+"name": &"Hit",
+"speed": 5.0
+}, {
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_ebwui")
@@ -495,7 +508,7 @@ animations = [{
 [node name="player" type="CharacterBody2D" unique_id=819973379]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=817402878]
-position = Vector2(-1, 7)
+position = Vector2(-14, 9)
 shape = SubResource("RectangleShape2D_g2els")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=499042611]
@@ -506,16 +519,15 @@ texture_filter = 1
 position = Vector2(-6.0000014, -33)
 scale = Vector2(7.5625, 7.6875)
 sprite_frames = SubResource("SpriteFrames_fjrip")
-animation = &"attack_effect_down"
+animation = &"Hit"
 
 [node name="BladeEffect" type="AnimatedSprite2D" parent="." unique_id=743740054]
 position = Vector2(-4, 20)
 scale = Vector2(7.577499, 7.5774994)
 sprite_frames = SubResource("SpriteFrames_b8lor")
-animation = &"attack_effect_up"
+animation = &"attack_effect"
 
 [node name="MovementEffect" type="AnimatedSprite2D" parent="." unique_id=2068770385]
 scale = Vector2(8, 8)
 sprite_frames = SubResource("SpriteFrames_tk6la")
-animation = &"ParryAnimation"
-frame_progress = 1.0
+animation = &"DashAnimation"

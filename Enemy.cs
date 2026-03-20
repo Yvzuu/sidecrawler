@@ -12,11 +12,15 @@ public partial class Enemy : CharacterBody2D
 
 	private bool _IsDead = false;
 	private bool _CanAttack = true;
-	private float _AttackCooldown = 1.0f;
+	private float _AttackCooldown = 0f;
 	private float _AttackTimer = 0f;
 	public float gravity = ProjectSettings.GetSetting("physics/2d/default_gravity").AsSingle();
+	private int _patrolDirection = -1;
+	private float _patrolTimer= 0f;
+	private float _patrolDuration = 2.0f;
+	private Random _patrolRandom = new Random();
 	
-	private float _hitCooldown = 0.5f;
+	private float _hitCooldown = 0f;
 	private float _hitTimer = 0f;
 	private bool _isStunned = false; // Pour bloquer l'IA pendant le hit
 
@@ -48,50 +52,111 @@ public partial class Enemy : CharacterBody2D
 		// Gestion du timer d'invincibilité
 		if (_hitTimer > 0f) _hitTimer -= (float)delta;
 
+		// Détection du joueur
+		float followDistance = 1000f;
 		Vector2 velocity = Velocity;
+		Player player = null;
 		var players = GetTree().GetNodesInGroup("player");
-		
 		if (players.Count > 0)
 		{
-			var p = players[0] as Player;
-			if (p != null)
+			player = players[0] as Player;
+		}
+
+		bool isFollowing = false;
+		if (player != null)
+		{
+			float xDiff = Mathf.Abs(GlobalPosition.X - player.GlobalPosition.X);
+			float yDiff = Mathf.Abs(GlobalPosition.Y - player.GlobalPosition.Y);
+			float yTolerance = 80f;
+			if (xDiff < followDistance && yDiff < yTolerance)
 			{
-				// Gravité
-				if (!IsOnFloor())
-				{
-					velocity.Y += gravity * (float)delta;
-				}
-				else
-				{
-					velocity.Y = 0;
-				}
-
-				float dist = GlobalPosition.DistanceTo(p.GlobalPosition);
-				Vector2 direction = (p.GlobalPosition - GlobalPosition).Normalized();
-
-				// Flip visuel
-				if (direction.X != 0) _anim.FlipH = direction.X > 0;
-
-				// LOGIQUE D'ATTAQUE
-				if (!p.IsDashing && dist < 95 && _CanAttack)
-				{
-					velocity.X = 0; // S'arrête pour attaquer
-					_anim.Play("Attack");
-					Attack(p);
-					_CanAttack = false;
-					_AttackTimer = _AttackCooldown;
-				}
-				// LOGIQUE DE MOUVEMENT (Seulement si on n'est pas en train d'attaquer)
-				else if (_anim.Animation != "Attack")
-				{
-					velocity.X = direction.X * Speed;
-					_anim.Play("Walk");
-				}
-
-				Velocity = velocity;
-				MoveAndSlide();
+				// Suivi du joueur
+				isFollowing = true;
+				float directionX = Mathf.Sign(player.GlobalPosition.X - GlobalPosition.X);
+				velocity.X = directionX * Speed;
+				_anim.FlipH = directionX > 0;
+				_anim.Play("Walk");
 			}
 		}
+
+		if (!isFollowing)
+		{
+			// Patrouille gauche à droite
+			if (!IsOnFloor())
+			{
+				velocity.Y += gravity * (float)delta;
+			}
+			else
+			{
+				velocity.Y = 0;
+			}
+
+			if (_patrolTimer == 0)
+			{
+				_patrolDuration = 1f + (float)_patrolRandom.NextDouble() * 1.5f; // Entre 1 et 2.5 secondes
+				// Ne pas toucher au flip ici
+			}
+			_patrolTimer += (float)delta;
+			if (_patrolTimer > _patrolDuration)
+			{
+				_patrolDirection *= -1;
+				_patrolDuration = 1f + (float)_patrolRandom.NextDouble() * 1.5f; // Entre 1 et 2.5 secondes
+				_patrolTimer = 0f;
+				_anim.FlipH = _patrolDirection > 0;
+			}
+			velocity.X = _patrolDirection * Speed;
+			// Flip uniquement lors du changement de direction
+			_anim.Play("Walk");
+		}
+		Velocity = velocity;
+		MoveAndSlide();
+	// ...existing code...
+
+		// --- Suivi du joueur ---
+		// Vector2 velocity = Velocity;
+		// var players = GetTree().GetNodesInGroup("player");
+		// 
+		// if (players.Count > 0)
+		// {
+		//     var p = players[0] as Player;
+		//     if (p != null)
+		//     {
+		//         // Gravité
+		//         if (!IsOnFloor())
+		//         {
+		//             velocity.Y += gravity * (float)delta;
+		//         }
+		//         else
+		//         {
+		//             velocity.Y = 0;
+		//         }
+		// 
+		//         float dist = GlobalPosition.DistanceTo(p.GlobalPosition);
+		//         Vector2 direction = (p.GlobalPosition - GlobalPosition).Normalized();
+		// 
+		//         // Flip visuel
+		//         if (direction.X != 0) _anim.FlipH = direction.X > 0;
+		// 
+		//         // LOGIQUE D'ATTAQUE
+		//         if (!p.IsDashing && dist < 95 && _CanAttack)
+		//         {
+		//             velocity.X = 0; // S'arrête pour attaquer
+		//             _anim.Play("Attack");
+		//             Attack(p);
+		//             _CanAttack = false;
+		//             _AttackTimer = _AttackCooldown;
+		//         }
+		//         // LOGIQUE DE MOUVEMENT (Seulement si on n'est pas en train d'attaquer)
+		//         else if (_anim.Animation != "Attack")
+		//         {
+		//             velocity.X = direction.X * Speed;
+		//             _anim.Play("Walk");
+		//         }
+		// 
+		//         Velocity = velocity;
+		//         MoveAndSlide();
+		//     }
+		// }
 	}
 
 	private void OnAnimationFinished()
@@ -131,6 +196,8 @@ public partial class Enemy : CharacterBody2D
 	private async void Die()
 	{
 		_IsDead = true;
+		_anim.Play("Hit");
+		await ToSignal(_anim, "animation_finished");
 		_anim.Play("Dead");
 		// On attend la fin de l'anim de mort avant de supprimer
 		await ToSignal(_anim, "animation_finished");
